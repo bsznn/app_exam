@@ -11,8 +11,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export const getOrders = () => api.get('api/orders');
-export const getProducts = () => api.get('api/products');
-export const updateOrderStatus = (orderId, status) => api.put(`api/orders/${orderId}/status`, { status });
-export const validateOrder = (orderId) => api.put(`api/orders/${orderId}/validate`, {});
-export const updateProductStock = (productId, stock) => api.put(`api/products/${productId}/stock`, { stock });
+export const getOrders = () => api.get('/api/orders');
+export const getProducts = () => api.get('/api/products');
+export const updateOrderStatus = (orderId, status) => api.put(`/api/orders/${orderId}/status`, { status });
+export const validateOrder = (orderId) => api.put(`/api/orders/${orderId}/validate`, {});
+export const updateProductStock = (productId, stock) => api.put(`/api/products/${productId}/stock`, { stock });
