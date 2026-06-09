@@ -33,6 +33,11 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
+app.get('/', (req, res) => {
+  res.json({ status: 'GATEWAY est en train de tourné !' });
+});
+
+
 app.use('/notify', notifiProxy);
 app.use('/update-stock', stockProxy);
 

@@ -45,7 +45,7 @@ app.post('/notify', async (req, res) => {
 });
 
 // Lancer le service Notification
-const PORT = process.env.NOTIFI_PORT || 4002;
+const PORT = process.env.PORT || 4002;
 app.listen(PORT, () => {
   console.log(`Service de notification en écoute sur le port ${PORT}`);
 });
