@@ -6,11 +6,10 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: node server.js
-    envVarGroups:
-      - app-exam-env
     envVars:
       - key: PORT
         value: 10000
+      - fromGroup: app-exam-env
 
   - name: backend
     type: web
@@ -19,8 +18,6 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: node server.js
-    envVarGroups:
-      - app-exam-env
     envVars:
       - key: PORT
         value: 10000
@@ -28,6 +25,7 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
+      - fromGroup: app-exam-env
 
   - name: notifications
     type: web
@@ -36,11 +34,10 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: node index.js
-    envVarGroups:
-      - app-exam-env
     envVars:
       - key: PORT
         value: 10000
+      - fromGroup: app-exam-env
 
   - name: stock-management
     type: web
@@ -49,11 +46,10 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: node index.js
-    envVarGroups:
-      - app-exam-env
     envVars:
       - key: PORT
         value: 10000
+      - fromGroup: app-exam-env
 
   - name: frontend
     type: web
@@ -61,10 +57,9 @@ services:
     rootDir: ./frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
-    envVarGroups:
-      - app-exam-env
     envVars:
       - key: REACT_APP_GATEWAY_URL
         sync: false
       - key: REACT_APP_BACKEND_URL
         sync: false
+      - fromGroup: app-exam-env
