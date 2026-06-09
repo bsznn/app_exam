@@ -31,7 +31,7 @@ const Register = () => {
     setLoading(true);
     try {
       await axios.post(
-        `${process.env.REACT_APP_BACKEND_URL}/auth/register`,
+        `${process.env.REACT_APP_BACKEND_URL}/api/auth/register`,
         formData,
         { withCredentials: true }
       );
