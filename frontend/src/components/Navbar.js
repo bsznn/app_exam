@@ -9,6 +9,7 @@ const Navbar = () => {
 
   const isAuthenticated = !!localStorage.getItem('username');
   const username = localStorage.getItem('username');
+  const role = localStorage.getItem('role');
 
   const handleLogout = () => {
     localStorage.removeItem('username');
