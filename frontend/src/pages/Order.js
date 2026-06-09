@@ -59,6 +59,7 @@ const Order = () => {
       }
 
       dispatch({ type: "CLEAR_CART" });
+      alert("Votre commande est validée, vous recevrez un mail de confirmation !");
       navigate("/", { state: { message: "Commande confirmée avec succès !" } });
     } catch (err) {
       if (err.response?.data?.message) {
