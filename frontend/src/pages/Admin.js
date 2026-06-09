@@ -101,17 +101,30 @@ const Admin = () => {
                   {loadingOrder === order._id ? "Mise à jour..." : 'Changer état à "Expédiée"'}
                 </button>
               )}
-
               {order.status !== "En cours de traitement" && order.status !== "Expédiée" && (
                 <button
-                  onClick={() => validateOrder(order._id, "En cours de traitement")}
+                  onClick={async () => {
+                    setLoadingOrder(order._id);
+                    setError("");
+                    try {
+                      await validateOrder(order._id);
+                      setOrders((prev) =>
+                        prev.map((o) =>
+                          o._id === order._id ? { ...o, status: "Validée" } : o
+                        )
+                      );
+                    } catch {
+                      setError(`Erreur lors de la validation de la commande ${order._id}.`);
+                    } finally {
+                      setLoadingOrder(null);
+                    }
+                  }}
                   className="bg-green-500 text-white px-2 py-1 mt-2 rounded"
                   disabled={loadingOrder === order._id}
                 >
-                  Valider la commande
+                  {loadingOrder === order._id ? "Mise à jour..." : "Valider la commande"}
                 </button>
               )}
-
               <button
                 onClick={() => setSelectedOrder(order)}
                 className="bg-gray-500 text-white ml-2 px-2 py-1 mt-2 rounded"
