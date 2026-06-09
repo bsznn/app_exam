@@ -71,7 +71,7 @@ exports.login = async (req, res) => {
       maxAge: 3600000, // 1h en ms
     });
 
-    res.json({ role: user.role, username: user.username });
+    res.json({ role: user.role, username: user.username, token });
   } catch (error) {
     logger.error('Erreur serveur lors de la connexion', { error });
     res.status(500).json({ message: 'Erreur serveur.' });
