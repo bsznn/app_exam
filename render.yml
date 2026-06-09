@@ -1,6 +1,3 @@
-envVarGroups:
-  - name: app-exam-env
-
 services:
   - name: gateway
     type: web
