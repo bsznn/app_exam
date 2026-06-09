@@ -6,6 +6,7 @@ import {
   getProducts,
   updateProductStock,
 } from "../services/adminApi";
+import { validateOrder } from "../../../backend/controllers/orderController";
 
 const Admin = () => {
   const [orders, setOrders] = useState([]);
@@ -103,7 +104,7 @@ const Admin = () => {
 
               {order.status !== "En cours de traitement" && order.status !== "Expédiée" && (
                 <button
-                  onClick={() => handleOrderStatusChange(order._id, "En cours de traitement")}
+                  onClick={() => validateOrder(order._id, "En cours de traitement")}
                   className="bg-green-500 text-white px-2 py-1 mt-2 rounded"
                   disabled={loadingOrder === order._id}
                 >
