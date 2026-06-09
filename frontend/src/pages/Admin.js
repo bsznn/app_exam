@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 import {
   getOrders,
   updateOrderStatus,
+  validateOrder,
   getProducts,
   updateProductStock,
 } from "../services/adminApi";
-import { validateOrder } from "../../../backend/controllers/orderController";
 
 const Admin = () => {
   const [orders, setOrders] = useState([]);
