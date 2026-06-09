@@ -161,3 +161,4 @@ npm install winston
 ## ADMIN 
 
 - Ajout du lien vers la page Admin dans le composant navbar
+- Correction de `validateOrder` 
