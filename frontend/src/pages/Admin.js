@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import {
   getOrders,
   updateOrderStatus,
-  // validateOrder,
   getProducts,
   updateProductStock,
 } from "../services/adminApi";
@@ -13,115 +12,104 @@ const Admin = () => {
   const [products, setProducts] = useState([]);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loadingOrder, setLoadingOrder] = useState(null);
-  const [newStock, setNewStock] = useState({}); // Stock temporaire par produit
-  const [updatingStock, setUpdatingStock] = useState(null); // Stock en cours de mise à jour
+  const [newStock, setNewStock] = useState({});
+  const [updatingStock, setUpdatingStock] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
-      const ordersResponse = await getOrders();
-      setOrders(ordersResponse.data);
-
-      const productsResponse = await getProducts();
-      setProducts(productsResponse.data);
+      try {
+        const [ordersResponse, productsResponse] = await Promise.all([
+          getOrders(),
+          getProducts(),
+        ]);
+        setOrders(ordersResponse.data);
+        setProducts(productsResponse.data);
+      } catch {
+        setError("Impossible de charger les données. Veuillez rafraîchir la page.");
+      }
     };
-
     fetchData();
   }, []);
 
   const handleOrderStatusChange = async (orderId, newStatus) => {
-    setLoadingOrder(orderId); // Active le loader
+    setLoadingOrder(orderId);
+    setError("");
     try {
       await updateOrderStatus(orderId, newStatus);
-
-      // Mettre à jour l'état local après une mise à jour réussie
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
+      setOrders((prev) =>
+        prev.map((order) =>
           order._id === orderId ? { ...order, status: newStatus } : order
         )
       );
-
-      alert(`Statut de la commande ${orderId} mis à jour en "${newStatus}".`);
-    } catch (error) {
-      alert("Erreur lors de la mise à jour du statut de la commande.");
+    } catch {
+      setError(`Erreur lors de la mise à jour du statut de la commande ${orderId}.`);
+    } finally {
+      setLoadingOrder(null);
     }
-    setLoadingOrder(null); // Désactive le loader
   };
 
-  // const handleOrderValidation = async (orderId) => {
-  //   await validateOrder(orderId);
-  //   alert(`Commande ${orderId} validée.`);
-  // };
-
   const handleStockUpdate = async (productId) => {
-    const stockValue = newStock[productId]; // Récupère la valeur saisie pour ce produit
+    const stockValue = Number(newStock[productId]);
 
-    if (!stockValue || stockValue < 0) {
-      alert("Veuillez entrer une quantité de stock valide.");
+    if (!newStock[productId] || stockValue < 0 || !Number.isInteger(stockValue)) {
+      setError("Veuillez entrer une quantité de stock valide (entier positif).");
       return;
     }
 
+    setUpdatingStock(productId);
+    setError("");
     try {
-      setUpdatingStock(productId); // Active le loader
       await updateProductStock(productId, stockValue);
-      alert(`Stock du produit mis à jour à ${stockValue}.`);
-
-      // Mise à jour de l'affichage avec le nouveau stock
-      const updatedProducts = products.map((product) =>
-        product._id === productId ? { ...product, stock: stockValue } : product
+      setProducts((prev) =>
+        prev.map((product) =>
+          product._id === productId ? { ...product, stock: stockValue } : product
+        )
       );
-      setProducts(updatedProducts);
-
-      // Réinitialisation du champ
-      setNewStock({ ...newStock, [productId]: "" });
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du stock :", error);
-      alert("Échec de la mise à jour du stock.");
+      setNewStock((prev) => ({ ...prev, [productId]: "" }));
+    } catch {
+      setError("Échec de la mise à jour du stock.");
     } finally {
-      setUpdatingStock(null); // Désactive le loader
+      setUpdatingStock(null);
     }
   };
 
   return (
     <div className="p-8">
       <h2 className="text-2xl font-bold mb-4">Page d'administration</h2>
+
+      {error && (
+        <p className="text-red-500 text-sm mb-4 p-2 bg-red-50 rounded">{error}</p>
+      )}
+
       {/* Gestion des Commandes */}
       <div className="mb-6">
         <h3 className="text-xl font-semibold">Gestion des Commandes</h3>
         <ul>
           {orders.map((order) => (
             <li key={order._id} className="border p-4 mb-4 rounded shadow">
-              <p>
-                <strong>ID :</strong> {order._id}
-              </p>
-              <p>
-                <strong>Status :</strong> {order.status}
-              </p>
+              <p><strong>ID :</strong> {order._id}</p>
+              <p><strong>Status :</strong> {order.status}</p>
+
               {order.status !== "Expédiée" && (
                 <button
                   onClick={() => handleOrderStatusChange(order._id, "Expédiée")}
                   className="bg-blue-500 text-white px-2 py-1 mt-2 rounded mr-2"
                   disabled={loadingOrder === order._id}
                 >
-                  {loadingOrder === order._id
-                    ? "Mise à jour..."
-                    : 'Changer état à "Expédiée"'}
+                  {loadingOrder === order._id ? "Mise à jour..." : 'Changer état à "Expédiée"'}
                 </button>
               )}
 
-              {order.status !== "En cours de traitement" &&
-                order.status !== "Expédiée" && (
-                  <button
-                    onClick={() =>
-                      handleOrderStatusChange(
-                        order._id,
-                        "En cours de traitement"
-                      )
-                    }
-                    className="bg-green-500 text-white px-2 py-1 mt-2 rounded"
-                  >
-                    Valider la commande
-                  </button>
-                )}
+              {order.status !== "En cours de traitement" && order.status !== "Expédiée" && (
+                <button
+                  onClick={() => handleOrderStatusChange(order._id, "En cours de traitement")}
+                  className="bg-green-500 text-white px-2 py-1 mt-2 rounded"
+                  disabled={loadingOrder === order._id}
+                >
+                  Valider la commande
+                </button>
+              )}
 
               <button
                 onClick={() => setSelectedOrder(order)}
@@ -160,10 +148,7 @@ const Admin = () => {
                     value={newStock[product._id] || ""}
                     className="border p-2 w-20"
                     onChange={(e) =>
-                      setNewStock({
-                        ...newStock,
-                        [product._id]: e.target.value,
-                      })
+                      setNewStock({ ...newStock, [product._id]: e.target.value })
                     }
                   />
                   <button
@@ -171,9 +156,7 @@ const Admin = () => {
                     className="bg-green-500 text-white px-2 py-1 ml-2 rounded"
                     disabled={updatingStock === product._id}
                   >
-                    {updatingStock === product._id
-                      ? "Mise à jour..."
-                      : "Mettre à jour"}
+                    {updatingStock === product._id ? "Mise à jour..." : "Mettre à jour"}
                   </button>
                 </td>
               </tr>
@@ -182,33 +165,21 @@ const Admin = () => {
         </table>
       </div>
 
-      {/* Fenêtre modale pour afficher les détails de la commande */}
+      {/* Modale détails commande */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
           <div className="bg-white p-6 rounded-lg shadow-lg w-1/2">
             <h2 className="text-xl font-bold mb-4">Détails de la Commande</h2>
-            <p>
-              <strong>ID :</strong> {selectedOrder._id}
-            </p>
-            <p>
-              <strong>Status :</strong> {selectedOrder.status}
-            </p>
-            <p>
-              <strong>Total :</strong> {selectedOrder.total} €
-            </p>
+            <p><strong>ID :</strong> {selectedOrder._id}</p>
+            <p><strong>Status :</strong> {selectedOrder.status}</p>
+            <p><strong>Total :</strong> {selectedOrder.total} €</p>
             <h3 className="text-lg font-semibold mt-4">Produits :</h3>
             <ul className="mt-2">
               {selectedOrder.items.map((item, index) => (
                 <li key={index} className="border-b p-2">
-                  <p>
-                    <strong>Produit ID :</strong> {item.productId}
-                  </p>
-                  <p>
-                    <strong>Quantité :</strong> {item.quantity}
-                  </p>
-                  <p>
-                    <strong>Prix :</strong> {item.price} €
-                  </p>
+                  <p><strong>Produit ID :</strong> {item.productId}</p>
+                  <p><strong>Quantité :</strong> {item.quantity}</p>
+                  <p><strong>Prix :</strong> {item.price} €</p>
                 </li>
               ))}
             </ul>

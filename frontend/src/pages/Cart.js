@@ -1,43 +1,30 @@
-import React from 'react';
-import { useCart } from '../context/CartContext';
-import { useNavigate } from 'react-router-dom';
+// src/pages/Cart.js
+import React from "react";
+import { useCart } from "../context/CartContext";
+import { useNavigate } from "react-router-dom";
 
 const Cart = () => {
   const { cart, dispatch } = useCart();
   const navigate = useNavigate();
 
-  // Fonction pour gérer l'incrémentation de la quantité
   const incrementQuantity = (id) => {
-    dispatch({
-      type: 'ADD_TO_CART',
-      payload: { id, quantity: 1 }, // Ajoute +1 à la quantité
-    });
+    dispatch({ type: "ADD_TO_CART", payload: { id, quantity: 1 } });
   };
 
-  // Fonction pour gérer la décrémentation de la quantité
   const decrementQuantity = (id) => {
-    dispatch({
-      type: 'DECREMENT_QUANTITY',
-      payload: { id },
-    });
+    dispatch({ type: "DECREMENT_QUANTITY", payload: { id } });
   };
 
-  // Fonction pour gérer la suppression d'un produit
   const handleRemove = (id) => {
-    dispatch({
-      type: 'REMOVE_FROM_CART',
-      payload: { id },
-    });
+    dispatch({ type: "REMOVE_FROM_CART", payload: { id } });
   };
 
-  // Fonction pour vider le panier
   const clearCart = () => {
-    dispatch({ type: 'CLEAR_CART' });
+    dispatch({ type: "CLEAR_CART" });
   };
 
-  // Naviguer vers la page de commande
   const handleSubmitOrder = () => {
-    navigate('/shippig_payment');
+    navigate("/shippig_payment");
   };
 
   return (
@@ -97,13 +84,15 @@ const Cart = () => {
               ))}
             </tbody>
           </table>
+
           <p className="text-right font-bold text-lg mt-4">
-            Total :{' '}
+            Total :{" "}
             {cart
               .reduce((acc, item) => acc + item.price * item.quantity, 0)
-              .toFixed(2)}{' '}
+              .toFixed(2)}{" "}
             €
           </p>
+
           <div className="flex space-x-4 mt-4">
             <button
               onClick={clearCart}

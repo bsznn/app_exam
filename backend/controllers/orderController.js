@@ -1,46 +1,75 @@
 // backend/controllers/orderController.js
 const axios = require('axios');
+const Joi = require('joi');
 const Order = require('../models/Order');
-const orderLog = require('debug')('orderRoutes:console')
+const logger = require('../utils/logger');
+const orderLog = require('debug')('order:console');
 
+// Schémas de validation Joi
+const createOrderSchema = Joi.object({
+  items: Joi.array()
+    .items(
+      Joi.object({
+        productId: Joi.string().required().messages({
+          'any.required': 'Le productId est requis.',
+        }),
+        quantity: Joi.number().integer().min(1).required().messages({
+          'number.min': 'La quantité doit être au moins 1.',
+          'any.required': 'La quantité est requise.',
+        }),
+        price: Joi.number().min(0).required().messages({
+          'number.min': 'Le prix ne peut pas être négatif.',
+          'any.required': 'Le prix est requis.',
+        }),
+      })
+    )
+    .min(1)
+    .required()
+    .messages({
+      'array.min': 'La commande doit contenir au moins un article.',
+      'any.required': 'Les articles sont requis.',
+    }),
+  shippingAddress: Joi.object({
+    street: Joi.string().required(),
+    city: Joi.string().required(),
+    postalCode: Joi.string().required(),
+    country: Joi.string().required(),
+  }).required(),
+  paymentMethod: Joi.string().required().messages({
+    'any.required': 'Le mode de paiement est requis.',
+  }),
+  shippingMethod: Joi.string().required().messages({
+    'any.required': 'Le mode de livraison est requis.',
+  }),
+});
+
+const updateStatusSchema = Joi.object({
+  status: Joi.string()
+    .valid('En attente', 'Validée', 'Expédiée', 'Livrée', 'Annulée')
+    .required()
+    .messages({
+      'any.only': 'Statut invalide.',
+      'any.required': 'Le statut est requis.',
+    }),
+});
 
 exports.createOrder = async (req, res) => {
-  //userLog(`user is ${JSON.stringify(req.user)}`)
-  console.log(`user is in createOrder ${JSON.stringify(req.user)}`)
-  //const { items, shippingAddress, paymentMethod } = req.body;
-  const { items, shippingAddress, paymentMethod, shippingMethod, } = req.body;
-  console.log(`items are ${JSON.stringify(req.body)}`)
-  //const { items } = req.body;
-  let userId = req.user.userId;
-  // let shippingAddress = {
-  //   "street": "123 Main St",
-  //   "city": "New York",
-  //   "postalCode": "10001",
-  //   "country": "USA"
-  // };
-
-  // let paymentMethod =  "Carte bancaire";
-
-
-  // Vérification du format des données
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
-      message: 'Le corps de la requête doit contenir un tableau d\'objets { productId, quantity }.',
-    });
+  const { error, value } = createOrderSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ message: error.details[0].message });
   }
 
-  try {
-    // Logique pour préparer les détails de la commande
-    const orderDetails = items.map(({ productId, quantity, price }) => {
-      console.log(`Produit ID : ${productId}, Quantité : ${quantity}, Price ${price}`);
-      return { productId, quantity, price };
-    });
+  const { items, shippingAddress, paymentMethod, shippingMethod } = value;
+  const userId = req.user.userId;
 
-    // Création de la commande dans la base de données
-    const total = items.reduce(
-      (acc, { price, quantity }) => acc + price * quantity,
-      0
-    );
+  try {
+    const orderDetails = items.map(({ productId, quantity, price }) => ({
+      productId,
+      quantity,
+      price,
+    }));
+
+    const total = items.reduce((acc, { price, quantity }) => acc + price * quantity, 0);
 
     const newOrder = new Order({
       userId,
@@ -48,147 +77,126 @@ exports.createOrder = async (req, res) => {
       total,
       shippingAddress,
       paymentMethod,
-      shippingMethod
+      shippingMethod,
     });
 
-    // Sauvegarder la commande dans la base de données
     const savedOrder = await newOrder.save();
 
-    console.log('Commande sauvegardée :', savedOrder);
+    orderLog(`Commande créée : ${savedOrder._id} pour userId: ${userId}`);
+    logger.info(`Nouvelle commande créée`, { orderId: savedOrder._id, userId });
 
-    // Appel au micro-service de notification
     try {
-      await axios.post(`${process.env.REACT_APP_GATEWAY_URL}/notify`, {
-        to: 'syaob@yahoo.fr',
+      await axios.post(`${process.env.GATEWAY_URL}/notify`, {
+        to: process.env.NOTIFY_EMAIL,
         subject: 'Nouvelle Commande Créée',
-        text: `Une commande a été créée avec succès pour les produits suivants : \n${orderDetails
+        text: `Une commande a été créée avec succès pour les produits suivants :\n${orderDetails
           .map((item) => `Produit ID : ${item.productId}, Quantité : ${item.quantity}`)
           .join('\n')}`,
       });
-    } catch (error) {
-      console.error('Erreur lors de l\'envoi de la notification', error);
+    } catch (notifError) {
+      logger.warn("Échec de l'envoi de la notification de commande", { error: notifError });
     }
 
-    // Appel au micro-service de gestion des stocks
-    // try {
-    //   await Promise.all(
-    //     items.map(({ productId, quantity }) =>
-    //       axios.post(`${process.env.REACT_APP_GATEWAY_URL}/update-stock`, { productId, quantity })
-    //     )
-    //   );
-    // } catch (error) {
-    //   console.error('Erreur lors de la mise à jour des stocks', error);
-    // }
-
-    // Réponse de succès
     res.status(201).json({
-      message: 'Commande créée avec succès',
+      message: 'Commande créée avec succès.',
       order: savedOrder,
     });
   } catch (error) {
-    console.error('Erreur lors de la création de la commande', error);
-    res.status(500).json({
-      message: 'Une erreur est survenue lors de la création de la commande.',
-    });
+    logger.error('Erreur lors de la création de la commande', { error });
+    res.status(500).json({ message: 'Une erreur est survenue lors de la création de la commande.' });
   }
 };
 
+exports.deleteOrder = async (req, res) => {
+  const { orderId } = req.body;
 
-// exports.createOrder = async (req, res) => {
-//     const products = req.body; // Attente d'un tableau d'objets { productId, quantity }
-//     console.log(`products are ${JSON.stringify(products)}`)
-    
-//     // // Vérification du format des données
-//     if (!Array.isArray(products.items) || products.items.length === 0) {
-//       return res.status(400).json({ message: 'Le corps de la requête doit contenir un tableau d\'objets { productId, quantity }.' });
-//     }
-  
-//     try {
-//     //   // Logique pour traiter chaque produit de la commande
-//       const orderDetails = products.items.map(({ productId, quantity }) => {
-//         console.log(`Produit ID : ${productId}, Quantité : ${quantity}`);
-//         return { productId, quantity };
-//       });
+  if (!orderId) {
+    return res.status(400).json({ message: "L'identifiant de la commande est requis." });
+  }
 
-//       //TODO : requete avec le modele order pour ajouter les commande en db
-  
-//     //   // Appel au micro-service de notification
-//       try {
-//         await axios.post(`${process.env.REACT_APP_GATEWAY_URL}/notify`, {
-//           to: "syaob@yahoo.fr",
-//           subject: 'Nouvelle Commande Créée',
-//           text: `Une commande a été créée avec succès pour les produits suivants : \n${orderDetails
-//             .map((item) => `Produit ID : ${item.productId}, Quantité : ${item.quantity}`)
-//             .join('\n')}`,
-//         });
-//       } catch (error) {
-//         console.error('Erreur lors de l\'envoi de la notification', error);
-//       }
-  
-//       // Appel au micro-service de gestion des stocks
-//       try {
-//         await Promise.all(
-//           products.items.map(({ productId, quantity }) =>
-//             axios.post(`${process.env.REACT_APP_GATEWAY_URL}/update-stock`, { productId, quantity })
-//           )
-//         );
-//       } catch (error) {
-//         console.error('Erreur lors de la mise à jour des stocks', error);
-//       }
-  
-//       // Réponse de succès
-//       res.status(201).json({
-//         message: 'Commande créée avec succès',
-//         orderDetails,
-//       });
-//     } catch (error) {
-//       console.error('Erreur lors de la création de la commande', error);
-//       res.status(500).json({ message: 'Une erreur est survenue lors de la création de la commande.' });
-//     }
-//   };
+  try {
+    const order = await Order.findByIdAndDelete(orderId);
 
-exports.deleteOrder = async(req, res)=>{
-    const { orderId } = req.body;
-    console.log(`orderId to delete is ${orderId}`)
-}
+    if (!order) {
+      return res.status(404).json({ message: 'Commande non trouvée.' });
+    }
 
-exports.getOrders = async(req, res)=>{
+    orderLog(`Commande supprimée : ${orderId}`);
+    logger.info(`Commande supprimée`, { orderId });
 
-  const orders = await Order.find();
-      res.status(200).json(orders);
- 
-}
+    res.status(200).json({ message: `Commande ${orderId} supprimée avec succès.` });
+  } catch (error) {
+    logger.error(`Erreur lors de la suppression de la commande ${orderId}`, { error });
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.getOrders = async (req, res) => {
+  try {
+    const orders = await Order.find();
+    orderLog(`${orders.length} commandes récupérées`);
+    res.status(200).json(orders);
+  } catch (error) {
+    logger.error('Erreur lors de la récupération des commandes', { error });
+    res.status(500).json({ message: 'Erreur lors de la récupération des commandes.' });
+  }
+};
 
 exports.validateOrder = async (req, res) => {
   const { orderId } = req.body;
-  res.status(200).json({message: `Commande ${orderId} validée avec succès.`})
-}
 
-exports.updateOrderStatus = async (req, res) => {
-  const { orderId } = req.params;
-  const { status } = req.body;
+  if (!orderId) {
+    return res.status(400).json({ message: "L'identifiant de la commande est requis." });
+  }
 
-  console.log(`dump console log order id => ${orderId} status = ${status}`);
   try {
-    // Vérification des données
-    if (!status) {
-      return res.status(400).json({ message: "Le statut est requis." });
-    }
-
-    // Recherche de la commande et mise à jour
     const order = await Order.findByIdAndUpdate(
       orderId,
-      { status, updatedAt: new Date() }, // Mise à jour du statut et de la date de modification
-      { new: true } // Retourne la commande mise à jour
+      { status: 'Validée', updatedAt: new Date() },
+      { new: true }
     );
 
     if (!order) {
-      return res.status(404).json({ message: "Commande non trouvée." });
+      return res.status(404).json({ message: 'Commande non trouvée.' });
     }
 
-    res.status(200).json({ message: "Statut mis à jour avec succès", order });
+    orderLog(`Commande validée : ${orderId}`);
+    logger.info(`Commande validée`, { orderId });
+
+    res.status(200).json({ message: `Commande ${orderId} validée avec succès.`, order });
   } catch (error) {
-    console.error("Erreur lors de la mise à jour de la commande :", error);
-    res.status(500).json({ message: "Erreur serveur." });
+    logger.error(`Erreur lors de la validation de la commande ${orderId}`, { error });
+    res.status(500).json({ message: 'Erreur serveur.' });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  const { orderId } = req.params;
+
+  const { error, value } = updateStatusSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ message: error.details[0].message });
+  }
+
+  const { status } = value;
+
+  try {
+    const order = await Order.findByIdAndUpdate(
+      orderId,
+      { status, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!order) {
+      return res.status(404).json({ message: 'Commande non trouvée.' });
+    }
+
+    orderLog(`Commande ${orderId} => statut mis à jour : ${status}`);
+    logger.info(`Statut de la commande mis à jour`, { orderId, status });
+
+    res.status(200).json({ message: 'Statut mis à jour avec succès.', order });
+  } catch (error) {
+    logger.error(`Erreur lors de la mise à jour de la commande ${orderId}`, { error });
+    res.status(500).json({ message: 'Erreur serveur.' });
   }
 };

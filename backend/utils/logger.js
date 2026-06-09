@@ -1,14 +1,5 @@
-// gateway/server.js
-const express = require('express');
-const dotenv = require('dotenv');
+// backend/utils/logger.js
 const winston = require('winston');
-const notifiProxy = require('./routes/notifi');
-const stockProxy = require('./routes/stock');
-
-dotenv.config();
-
-const app = express();
-app.use(express.json());
 
 const logger = winston.createLogger({
   level: 'info',
@@ -33,10 +24,4 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
-app.use('/notify', notifiProxy);
-app.use('/update-stock', stockProxy);
-
-const PORT = process.env.GATEWAY_PORT || 8000;
-app.listen(PORT, () => {
-  logger.info(`Gateway opérationnel sur le port ${PORT}`);
-});
+module.exports = logger;

@@ -1,27 +1,32 @@
 // backend/middlewares/authMiddleware.js
 const jwt = require('jsonwebtoken');
+const logger = require('../utils/logger');
+const authLog = require('debug')('auth:middleware');
 
 exports.authenticateToken = (req, res, next) => {
+  const token = req.cookies?.token;
 
-  const token = req.headers['authorization']?.split(' ')[1];
-  console.log(`token is ${token}`)
-  if (!token) return res.sendStatus(401);
+  authLog(`Vérification du token`);
+
+  if (!token) {
+    return res.status(401).json({ error: true, message: 'Token manquant. Veuillez vous connecter.' });
+  }
 
   try {
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-      if (err) {
-        console.error('Erreur de vérification du token upd');
-        return res.status(403).json({ error: true, message: 'Token invalide upd' });
-      }
-      req.user = user;
-      next();
-    });
-  } catch (error) { 
-    return res.status(403).json({ error: true, message: 'Token invalide' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    authLog(`Token valide pour userId: ${decoded.userId}`);
+    next();
+  } catch (error) {
+    logger.warn('Token invalide ou expiré', { error });
+    return res.status(403).json({ error: true, message: 'Token invalide ou expiré.' });
   }
 };
 
 exports.isAdmin = (req, res, next) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Accès interdit' });
+  if (!req.user || req.user.role !== 'admin') {
+    logger.warn(`Accès admin refusé pour userId: ${req.user?.userId}`);
+    return res.status(403).json({ message: 'Accès interdit : droits administrateur requis.' });
+  }
   next();
 };
