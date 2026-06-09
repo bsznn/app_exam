@@ -23,6 +23,9 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center space-x-4">
+        {role === 'admin' && (
+          <Link to="/admin">Admin</Link>
+        )}
         {isAuthenticated && (
           <span className="font-semibold">Bonjour, {username}</span>
         )}

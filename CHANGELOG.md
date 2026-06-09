@@ -53,9 +53,6 @@
 - Ajout d'un `try/catch` sur `getProducts` (était sans gestion d'erreur)
 - Suppression des `console.log` / `console.error`, remplacés par `debug` + `logger`
 
-### `routes/authRoutes.js`
-- Ajout de la route `POST /logout`
-
 ---
 
 ## Gateway
