@@ -1,0 +1,74 @@
+services:
+  - name: gateway
+    type: web
+    runtime: node
+    rootDir: ./gateway
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NOTIFI_SERVICE_URL
+        sync: false
+      - key: STOCK_SERVICE_URL
+        sync: false
+
+  - name: backend
+    type: web
+    runtime: node
+    rootDir: ./backend
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+        
+  - name: notifications
+    type: web
+    runtime: node
+    rootDir: ./microservices/notifications
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_APPLICATION_PASSWORD
+        sync: false
+
+  - name: stock-management
+    type: web
+    runtime: node
+    rootDir: ./microservices/stock-management
+    plan: free
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        sync: false
+
+  - name: frontend
+    type: web
+    runtime: static
+    rootDir: ./frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: REACT_APP_GATEWAY_URL
+        sync: false
+      - key: REACT_APP_BACKEND_URL
+        sync: false
