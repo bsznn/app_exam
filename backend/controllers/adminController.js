@@ -78,7 +78,6 @@ exports.updateOrderStatus = async (req, res) => {
 
 // Valider une commande
 exports.validateOrder = async (req, res) => {
-  console.log("validateOrder appelé, id:", req.params.id);
   const { id } = req.params;
 
   try {
