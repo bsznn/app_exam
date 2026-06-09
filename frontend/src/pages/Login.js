@@ -26,10 +26,11 @@ const Login = () => {
         { withCredentials: true } 
       );
 
-      const { role, username } = response.data;
+      const { role, username, token } = response.data;
 
       localStorage.setItem("username", username);
       localStorage.setItem("role", role);
+      localStorage.setItem("token", token);
 
       navigate("/");
     } catch (err) {

@@ -3,18 +3,16 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_BACKEND_URL,
-  withCredentials: true,  
+});
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
 });
 
 export const getOrders = () => api.get('/orders');
-
 export const getProducts = () => api.get('/products');
-
-export const updateOrderStatus = (orderId, status) =>
-  api.put(`/orders/${orderId}/status`, { status });
-
-export const validateOrder = (orderId) =>
-  api.put(`/orders/${orderId}/validate`, {});
-
-export const updateProductStock = (productId, stock) =>
-  api.put(`/products/${productId}/stock`, { stock });
+export const updateOrderStatus = (orderId, status) => api.put(`/orders/${orderId}/status`, { status });
+export const validateOrder = (orderId) => api.put(`/orders/${orderId}/validate`, {});
+export const updateProductStock = (productId, stock) => api.put(`/products/${productId}/stock`, { stock });
